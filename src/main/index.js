@@ -1,15 +1,91 @@
 'use strict';
 
+const path = require('node:path');
 const { app } = require('electron');
-const { createTray } = require('./tray.js');
 
-let trayHandle = null;
+const { createTray } = require('./tray.js');
+const { registerIpc } = require('./ipc.js');
+const { createStore } = require('./store.js');
+const { listPorts } = require('./scanner/index.js');
+const { probeAll } = require('./probe.js');
+const { classify } = require('./classify.js');
+const { createTracker, snapshotFingerprint } = require('./state.js');
+
+let panel = null;
+let store = null;
+let timer = null;
+let panelVisible = false;
+let lastFingerprint = null;
+let lastPayload = { dev: [], other: [], error: null };
+
+const tracker = createTracker();
+
+async function collect() {
+  const raw = await listPorts();
+  const probes = await probeAll(raw.map((row) => row.port), {
+    timeoutMs: store.get('probeTimeoutMs')
+  });
+
+  const enriched = raw.map((row) => ({ ...row, ...probes.get(row.port) }));
+  const tracked = tracker.update(enriched);
+
+  return classify(tracked, { devRanges: store.get('devRanges') });
+}
+
+async function refreshNow() {
+  let payload;
+
+  try {
+    const { dev, other } = await collect();
+    payload = { dev, other, error: null };
+  } catch (error) {
+    // Keep the previous list on screen rather than blanking it; a failed scan is
+    // far more likely to be a transient lsof hiccup than every server vanishing.
+    payload = { ...lastPayload, error: `Scan failed: ${error.message}` };
+  }
+
+  const fingerprint = snapshotFingerprint([...payload.dev, ...payload.other]) + String(payload.error);
+  if (fingerprint === lastFingerprint) return;
+
+  lastFingerprint = fingerprint;
+  lastPayload = payload;
+
+  if (panel && !panel.isDestroyed()) {
+    panel.webContents.send('snapshot', { ...payload, settings: store.all(), now: Date.now() });
+  }
+}
+
+function rescheduleTimer() {
+  if (timer) clearInterval(timer);
+  const interval = panelVisible
+    ? store.get('pollIntervalOpenMs')
+    : store.get('pollIntervalClosedMs');
+  timer = setInterval(refreshNow, interval);
+}
 
 if (process.platform === 'darwin' && app.dock) app.dock.hide();
 
 app.whenReady().then(() => {
-  trayHandle = createTray({ onVisibilityChange: () => {} });
+  store = createStore({ filePath: path.join(app.getPath('userData'), 'settings.json') });
+
+  if (app.isPackaged) {
+    app.setLoginItemSettings({ openAtLogin: store.get('openAtLogin'), openAsHidden: true });
+  }
+
+  const handle = createTray({
+    onVisibilityChange: (visible) => {
+      panelVisible = visible;
+      rescheduleTimer();
+      if (visible) refreshNow();
+    }
+  });
+  panel = handle.panel;
+
+  registerIpc({ panel, store, refreshNow, setSuppressHide: handle.setSuppressHide });
+
+  panel.webContents.on('did-finish-load', refreshNow);
+  rescheduleTimer();
+  refreshNow();
 });
 
-// A tray app has no windows to keep alive, so the default quit-on-close is wrong.
 app.on('window-all-closed', (event) => event.preventDefault());
