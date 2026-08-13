@@ -83,7 +83,7 @@ Tasks 2–9 build the pure logic and are fully test-driven. Tasks 10–14 build 
   "private": true,
   "scripts": {
     "start": "electron .",
-    "test": "node --test test/",
+    "test": "node --test \"test/**/*.test.js\"",
     "dist": "electron-builder"
   },
   "devDependencies": {
@@ -92,6 +92,8 @@ Tasks 2–9 build the pure logic and are fully test-driven. Tasks 10–14 build 
   }
 }
 ```
+
+The test script uses an explicit quoted glob rather than `node --test test/`. On Node v24.13.1 the directory form is not treated as a test path — it is resolved as an entry module and dies with `Cannot find module '…/test'`. The quotes matter: they stop the shell from expanding the glob so Node expands it itself.
 
 - [ ] **Step 2: Install dependencies**
 
