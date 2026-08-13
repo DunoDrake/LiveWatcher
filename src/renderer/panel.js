@@ -16,6 +16,13 @@ const dom = {
 
 let otherOpen = false;
 
+// The main process only sends a snapshot when the server list actually changes,
+// so on a quiet machine no message arrives for hours. Uptime therefore has to
+// tick here, against the local clock, or the column freezes at whatever it last
+// read. Both clocks are the same machine, so `now` needs no offset correction.
+const UPTIME_TICK_MS = 30_000;
+let liveUptimes = [];
+
 function formatUptime(elapsedMs) {
   const totalSeconds = Math.max(0, Math.floor(elapsedMs / 1000));
   const hours = Math.floor(totalSeconds / 3600);
@@ -23,6 +30,10 @@ function formatUptime(elapsedMs) {
   if (hours > 0) return `${hours}h ${minutes}m`;
   if (minutes > 0) return `${minutes}m`;
   return `${totalSeconds}s`;
+}
+
+function uptimeText(entry, now) {
+  return entry.kind === 'http' ? formatUptime(now - entry.firstSeenAt) : '—';
 }
 
 function dotClass(entry) {
@@ -71,7 +82,8 @@ function buildRow(entry, now) {
   right.className = 'right';
   const uptime = document.createElement('span');
   uptime.className = 'uptime';
-  uptime.textContent = entry.kind === 'http' ? formatUptime(now - entry.firstSeenAt) : '—';
+  uptime.textContent = uptimeText(entry, now);
+  if (entry.kind === 'http') liveUptimes.push({ element: uptime, entry });
 
   const actions = document.createElement('div');
   actions.className = 'actions';
@@ -119,14 +131,24 @@ function render({ dev, other, error, settings, now }) {
   dom.banner.hidden = !error;
   if (error) dom.banner.textContent = error;
 
-  dom.count.textContent = dev.length === 1 ? '1 live' : `${dev.length} live`;
+  dom.count.textContent = `${dev.length} live`;
   dom.empty.hidden = dev.length > 0;
 
+  liveUptimes = [];
   dom.devList.replaceChildren(...dev.map((entry) => buildRow(entry, now)));
   dom.otherList.replaceChildren(...other.map((entry) => buildRow(entry, now)));
   dom.otherLabel.textContent = `Other listening ports (${other.length})`;
   dom.login.checked = Boolean(settings.openAtLogin);
 }
+
+function tickUptimes() {
+  const now = Date.now();
+  for (const { element, entry } of liveUptimes) {
+    element.textContent = uptimeText(entry, now);
+  }
+}
+
+setInterval(tickUptimes, UPTIME_TICK_MS);
 
 dom.otherToggle.addEventListener('click', () => {
   otherOpen = !otherOpen;

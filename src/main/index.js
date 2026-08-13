@@ -15,6 +15,7 @@ let panel = null;
 let store = null;
 let timer = null;
 let panelVisible = false;
+let scanning = false;
 let lastFingerprint = null;
 let lastPayload = { dev: [], other: [], error: null };
 
@@ -33,6 +34,13 @@ async function collect() {
 }
 
 async function refreshNow() {
+  // A scan can outlast its own interval: lsof may take seconds and each wave of
+  // probes adds up to the probe timeout. Overlapping runs finish out of order,
+  // and the older one then deletes the newer one's firstSeen entries, making
+  // rows vanish and their uptime restart.
+  if (scanning) return;
+  scanning = true;
+
   let payload;
 
   try {
@@ -42,6 +50,9 @@ async function refreshNow() {
     // Keep the previous list on screen rather than blanking it; a failed scan is
     // far more likely to be a transient lsof hiccup than every server vanishing.
     payload = { ...lastPayload, error: `Scan failed: ${error.message}` };
+  } finally {
+    // Safe to clear here: nothing below awaits, so no other run can interleave.
+    scanning = false;
   }
 
   const fingerprint = snapshotFingerprint([...payload.dev, ...payload.other]) + String(payload.error);

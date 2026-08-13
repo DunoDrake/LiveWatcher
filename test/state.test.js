@@ -41,6 +41,14 @@ test('the fingerprint is stable across reordering', () => {
   assert.strictEqual(a, b);
 });
 
+test('the fingerprint keeps adjacent fields apart', () => {
+  // Undelimited joining lets a title's tail slide into the process name, so a
+  // genuine change can hash to the previous value and never reach the panel.
+  const a = snapshotFingerprint([{ ...entry(3000), title: 'foo', processName: 'bar' }]);
+  const b = snapshotFingerprint([{ ...entry(3000), title: 'foob', processName: 'ar' }]);
+  assert.notStrictEqual(a, b);
+});
+
 test('the fingerprint changes when a probe result changes', () => {
   const before = snapshotFingerprint([{ ...entry(3000), title: 'old' }]);
   const after = snapshotFingerprint([{ ...entry(3000), title: 'new' }]);

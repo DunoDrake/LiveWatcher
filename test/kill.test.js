@@ -3,7 +3,12 @@
 const test = require('node:test');
 const assert = require('node:assert');
 
-const { checkKillGuards } = require('../src/main/kill.js');
+const {
+  checkKillGuards,
+  processIdentityMatches,
+  readProcessName,
+  isAlive
+} = require('../src/main/kill.js');
 
 const base = { pid: 8823, processName: 'node', ownerUid: 503, currentUid: 503 };
 
@@ -39,4 +44,38 @@ test('an unknown owner is allowed through so Windows can rely on EPERM', () => {
 test('a non-integer pid is refused', () => {
   const result = checkKillGuards({ ...base, pid: Number.NaN });
   assert.strictEqual(result.allowed, false);
+});
+
+test('identity matches when the live name equals the shown name', () => {
+  assert.ok(processIdentityMatches('node', 'node'));
+  assert.ok(processIdentityMatches('node.exe', 'node'));
+  assert.ok(processIdentityMatches('Python', 'python'));
+});
+
+test('identity matches when one name is a truncation of the other', () => {
+  // lsof and ps report the same process under different lengths.
+  assert.ok(processIdentityMatches('Discord Helper (Renderer)', 'Discord Helper'));
+});
+
+test('identity does NOT match a recycled pid running something else', () => {
+  assert.ok(!processIdentityMatches('node', 'postgres'));
+  assert.ok(!processIdentityMatches('node', 'zsh'));
+});
+
+test('identity is assumed intact when the live name cannot be read', () => {
+  // Windows has no ps; the OS enforces ownership by failing the kill instead.
+  assert.ok(processIdentityMatches('node', null));
+});
+
+test('readProcessName returns the real command name for a live pid', async () => {
+  const name = await readProcessName(process.pid);
+  assert.strictEqual(typeof name, 'string');
+  assert.match(name, /node/i);
+});
+
+test('readProcessName returns null for a pid that does not exist', async () => {
+  let free = 999_999;
+  while (isAlive(free)) free -= 1;
+
+  assert.strictEqual(await readProcessName(free), null);
 });

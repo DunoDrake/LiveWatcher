@@ -36,6 +36,33 @@ function getOwnerUid(pid) {
   });
 }
 
+// Reads the live command name for a PID, so a kill can confirm the process is
+// still the one the user was shown. Resolves null when it cannot be determined.
+function readProcessName(pid) {
+  if (process.platform === 'win32') return Promise.resolve(null);
+
+  return new Promise((resolve) => {
+    execFile('ps', ['-o', 'comm=', '-p', String(pid)], { timeout: 3000 }, (error, stdout) => {
+      if (error) return resolve(null);
+      const name = String(stdout).trim();
+      resolve(name.length > 0 ? name.split('/').pop() : null);
+    });
+  });
+}
+
+// The panel's row can be up to a poll interval old, and the confirmation dialog
+// can sit open indefinitely. If the PID were recycled in that window, the guards
+// would happily approve a kill against an unrelated process the user now owns.
+function processIdentityMatches(expectedName, liveName) {
+  if (liveName === null) return true;
+
+  const normalize = (value) => String(value).toLowerCase().replace(/\.exe$/, '');
+  const expected = normalize(expectedName);
+  const live = normalize(liveName);
+
+  return expected === live || expected.startsWith(live) || live.startsWith(expected);
+}
+
 function isAlive(pid) {
   try {
     process.kill(pid, 0);
@@ -60,4 +87,12 @@ async function terminate({ pid, force = false }) {
   return { ok: true, stillAlive: isAlive(pid), reason: null };
 }
 
-module.exports = { checkKillGuards, getOwnerUid, terminate, isAlive, MIN_KILLABLE_PID };
+module.exports = {
+  checkKillGuards,
+  getOwnerUid,
+  readProcessName,
+  processIdentityMatches,
+  terminate,
+  isAlive,
+  MIN_KILLABLE_PID
+};

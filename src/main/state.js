@@ -26,10 +26,12 @@ function createTracker() {
 }
 
 function snapshotFingerprint(entries) {
+  // Delimited on purpose: joining with '' lets adjacent fields blur into each
+  // other, so a real change could hash to the previous value and be swallowed.
   return entries
-    .map((e) => [e.pid, e.port, e.kind, e.httpStatus, e.title, e.processName].join(''))
+    .map((e) => [e.pid, e.port, e.kind, e.httpStatus, e.title, e.processName].join('|'))
     .sort()
-    .join('');
+    .join('\n');
 }
 
 function formatUptime(elapsedMs) {

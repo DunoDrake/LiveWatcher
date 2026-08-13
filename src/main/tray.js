@@ -31,6 +31,14 @@ function createPanel() {
 
   panel.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
 
+  // The default application menu still offers Close Window (Cmd+W). Destroying
+  // the only window would leave the tray icon alive but inert, with every later
+  // click throwing on the destroyed object and no way back except Force Quit.
+  panel.on('close', (event) => {
+    event.preventDefault();
+    panel.hide();
+  });
+
   return panel;
 }
 

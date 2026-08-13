@@ -1,12 +1,30 @@
 'use strict';
 
 const { ipcMain, shell, clipboard, dialog, app } = require('electron');
-const { checkKillGuards, getOwnerUid, terminate } = require('./kill.js');
+const {
+  checkKillGuards,
+  getOwnerUid,
+  readProcessName,
+  processIdentityMatches,
+  terminate
+} = require('./kill.js');
+
+// Everything arriving over IPC is treated as untrusted input. A non-numeric port
+// would otherwise be interpolated straight into a URL, where 'localhost:@host'
+// parses as userinfo and sends the user to a foreign origin.
+const isValidPort = (port) => Number.isInteger(port) && port > 0 && port <= 65535;
 
 function registerIpc({ panel, store, refreshNow, setSuppressHide }) {
   ipcMain.on('refresh', () => refreshNow());
-  ipcMain.on('open-port', (_event, port) => shell.openExternal(`http://localhost:${port}`));
-  ipcMain.on('copy-url', (_event, port) => clipboard.writeText(`http://localhost:${port}`));
+
+  ipcMain.on('open-port', (_event, port) => {
+    if (isValidPort(port)) shell.openExternal(`http://localhost:${port}`);
+  });
+
+  ipcMain.on('copy-url', (_event, port) => {
+    if (isValidPort(port)) clipboard.writeText(`http://localhost:${port}`);
+  });
+
   ipcMain.on('quit', () => app.quit());
 
   ipcMain.handle('set-setting', (_event, { key, value }) => {
@@ -37,6 +55,17 @@ function registerIpc({ panel, store, refreshNow, setSuppressHide }) {
         detail: `This sends SIGTERM to PID ${pid}. Unsaved work in that process will be lost.`
       });
       if (confirmation.response !== 1) return { ok: false, reason: null };
+
+      // Re-check identity now, not when the row was drawn. The dialog may have
+      // been open for minutes, and a PID freed in the meantime can be reissued
+      // to something the user very much did not mean to kill.
+      const liveName = await readProcessName(pid);
+      if (!processIdentityMatches(processName, liveName)) {
+        return {
+          ok: false,
+          reason: `PID ${pid} is no longer ${processName}. Nothing was stopped.`
+        };
+      }
 
       const result = await terminate({ pid });
       if (!result.ok) return { ok: false, reason: result.reason };
