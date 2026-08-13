@@ -1,0 +1,16 @@
+{
+  "name": "livewatcher",
+  "version": "0.1.0",
+  "description": "Menu bar tool that lists live local servers",
+  "main": "src/main/index.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^38.0.0",
+    "electron-builder": "^26.0.0"
+  }
+}
