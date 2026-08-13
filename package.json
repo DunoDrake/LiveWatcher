@@ -12,5 +12,23 @@
   "devDependencies": {
     "electron": "^38.0.0",
     "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "com.hue.livewatcher",
+    "productName": "LiveWatcher",
+    "files": ["src/**/*", "package.json"],
+    "directories": { "output": "dist" },
+    "mac": {
+      "target": [{ "target": "dmg", "arch": ["arm64"] }],
+      "category": "public.app-category.developer-tools",
+      "extendInfo": { "LSUIElement": 1 }
+    },
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }
