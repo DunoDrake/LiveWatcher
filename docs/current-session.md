@@ -5,7 +5,8 @@
 **Project:** LiveWatcher — Electron tray tool listing live local servers.
 
 **Status:** Tasks 1–15 of `docs/superpowers/plans/2026-08-13-livewatcher.md` complete,
-on branch `feature/livewatcher`. 52 unit tests pass. The macOS `.dmg` builds.
+plus a final review pass, on branch `feature/livewatcher`. 66 unit tests pass.
+The macOS `.dmg` builds.
 
 ## Verified programmatically
 
@@ -62,3 +63,32 @@ These cannot be checked without watching the screen:
 - A long meta line pushed the uptime column off the 360px panel, because grid
   items default to `min-width: auto` and would not shrink. Fixed with
   `.row > div { min-width: 0 }`, which also activated the intended ellipsis.
+
+Found by the final review pass and fixed in `5ab98d1`:
+
+- **Uptime never advanced.** Snapshots are only sent when the fingerprint
+  changes, and the fingerprint has no time component, so on a quiet machine the
+  column froze at whatever it last read. The renderer now ticks it locally.
+  Verified: a row painted as `0s` from a stale snapshot reads `2h 14m` after one
+  tick against the real clock.
+- **Overlapping scans.** A scan can outlast its interval, and the older run then
+  deleted the newer run's `firstSeen` keys — rows vanished and uptimes reset.
+  `refreshNow` now refuses to re-enter.
+- **A recycled PID could be killed.** The confirmation dialog can sit open
+  indefinitely while the row's PID goes stale. The kill path now re-reads the
+  live process name and aborts if it no longer matches what the dialog promised.
+- **Cmd+W killed the app dead.** Closing the panel destroyed the only window,
+  leaving the tray icon inert with no recovery but Force Quit. Close now hides.
+- **Settings were trusted blindly.** `"devRanges": 5` made every scan throw with
+  no way back except deleting the file — bad, since hand-editing that file is the
+  documented way to configure the app. Values are now validated on load and on
+  set, with unknown keys refused.
+- **Fingerprint field collisions.** Fields were joined with `''`, so
+  `title:'foo' + name:'bar'` hashed the same as `title:'foob' + name:'ar'` and
+  swallowed a real update. Now delimited.
+
+Findings from that review left unfixed on purpose: `formatUptime` is duplicated
+between `state.js` (tested, unused) and `panel.js` (used, untested) because the
+sandboxed renderer cannot require from `src/main`; `showOtherPorts` is unused
+config; there is no `requestSingleInstanceLock`; and `ipc.js` has no unit tests
+of its own. None of these can lose data.
