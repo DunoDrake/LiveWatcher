@@ -962,7 +962,13 @@ test('probe records an HTTP error status without treating it as a failure', asyn
 });
 
 test('probe marks a non-HTTP TCP socket as kind tcp', async () => {
-  const server = net.createServer((socket) => socket.end());
+  // Drain the incoming bytes before ending: an accepted socket that never
+  // reads leaves its request unconsumed, which keeps Node's stream from
+  // emitting 'close' and hangs server.close() forever, independent of probe().
+  const server = net.createServer((socket) => {
+    socket.resume();
+    socket.end();
+  });
   const port = await listen(server);
 
   const result = await probe(port, { timeoutMs: 400 });
@@ -974,8 +980,11 @@ test('probe marks a non-HTTP TCP socket as kind tcp', async () => {
 });
 
 test('probe gives up on a silent socket within the timeout', async () => {
-  const server = net.createServer(() => {
-    // Accept and never respond, forcing the timeout path.
+  const server = net.createServer((socket) => {
+    // Accept and never respond, forcing the timeout path. Still drain the
+    // socket so an ended/aborted client connection can fully close (see the
+    // comment on the previous test for why this is required).
+    socket.resume();
   });
   const port = await listen(server);
 
