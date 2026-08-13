@@ -2,10 +2,41 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self';" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'self'; script-src 'self';"
+    />
+    <link rel="stylesheet" href="panel.css" />
     <title>LiveWatcher</title>
   </head>
   <body>
-    <main id="app">Loading…</main>
+    <header class="bar">
+      <h1>LiveWatcher</h1>
+      <span class="count" id="count"></span>
+      <button class="icon-button" id="refresh" title="Refresh now" aria-label="Refresh now">&#8635;</button>
+    </header>
+
+    <p class="banner" id="banner" hidden></p>
+
+    <ul class="list" id="dev-list"></ul>
+    <p class="empty" id="empty" hidden>No local servers running.</p>
+
+    <section class="other">
+      <button class="other-toggle" id="other-toggle" aria-expanded="false">
+        <span class="chevron" id="chevron">&#8250;</span>
+        <span id="other-label">Other listening ports</span>
+      </button>
+      <ul class="list" id="other-list" hidden></ul>
+    </section>
+
+    <footer class="bar footer">
+      <label class="toggle">
+        <input type="checkbox" id="login" />
+        <span>Launch at login</span>
+      </label>
+      <button class="text-button" id="quit">Quit</button>
+    </footer>
+
+    <script src="panel.js"></script>
   </body>
 </html>
