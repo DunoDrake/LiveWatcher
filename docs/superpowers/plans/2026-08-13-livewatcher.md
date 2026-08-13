@@ -2312,6 +2312,12 @@ git commit -m "[Add] panel interface with live rows, hover actions, and collapsi
 
 No new code unless a defect surfaces. This task exists because the kill path is the one place the app can lose someone's work, and unit tests cannot prove the wiring is right.
 
+- [ ] **Step 0: Confirm the panel stays open on a real tray click**
+
+Programmatic verification during Task 10 found that `toggle()` — which calls `panel.show()` then `panel.focus()` — can be followed by an immediate real `blur`, hiding the panel instantly, when the app is not the frontmost application (as happens when launching from a terminal). Showing without `focus()` did not reproduce it, and the panel stayed visible when left idle, so this is likely an artifact of launching from a terminal rather than a defect.
+
+Clicking the tray icon should make the app frontmost first, so this must be confirmed by hand: run `npm start`, click the tray icon, and leave the pointer still. The panel must stay open until you click elsewhere. If it vanishes on its own within a second, the fix is to call `app.focus({ steal: true })` before `panel.show()` in `toggle()`; add a note and re-verify.
+
 - [ ] **Step 1: Start a disposable server**
 
 Run in a separate terminal: `python3 -m http.server 8000`
