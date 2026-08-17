@@ -16,7 +16,7 @@
   "build": {
     "appId": "com.hue.livewatcher",
     "productName": "LiveWatcher",
-    "files": ["src/**/*", "package.json"],
+    "files": ["src/**/*", "assets/**/*", "package.json"],
     "directories": { "output": "dist" },
     "mac": {
       "target": [{ "target": "dmg", "arch": ["arm64"] }],

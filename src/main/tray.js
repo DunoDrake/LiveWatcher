@@ -5,8 +5,9 @@ const { Tray, BrowserWindow, nativeImage, screen } = require('electron');
 
 const PANEL_WIDTH = 360;
 const PANEL_MAX_HEIGHT = 620;
-const ICON_DATA_URL =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAYklEQVR42rVTsQ3AMAjzE/2mN/Kl76ALA7JoKwSx5IXEjkkIcBhXsC0yAATgQUbt1+wWoZKx5/XkLFZkkzKJfYjVxKpFiljj5zqr+N4wcG1jbDBuYeUSx884HqSVUV75TC08opdQxf5di+YAAAAASUVORK5CYII=';
+// electron loads the @2x variant itself when a HiDPI display asks for it, as
+// long as both files sit in the same directory under this exact naming.
+const TRAY_ICON_PATH = path.join(__dirname, '..', '..', 'assets', 'trayTemplate.png');
 
 function createPanel() {
   const panel = new BrowserWindow({
@@ -57,7 +58,7 @@ function positionPanel(panel, trayBounds) {
 }
 
 function createTray({ onVisibilityChange }) {
-  const icon = nativeImage.createFromDataURL(ICON_DATA_URL);
+  const icon = nativeImage.createFromPath(TRAY_ICON_PATH);
   icon.setTemplateImage(true);
 
   const tray = new Tray(icon);
