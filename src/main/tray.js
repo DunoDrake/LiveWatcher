@@ -1,7 +1,7 @@
 'use strict';
 
 const path = require('node:path');
-const { Tray, BrowserWindow, nativeImage, screen, Menu } = require('electron');
+const { Tray, BrowserWindow, nativeImage, screen, Menu, app } = require('electron');
 
 const PANEL_WIDTH = 360;
 const PANEL_MAX_HEIGHT = 620;
@@ -35,7 +35,13 @@ function createPanel() {
   // The default application menu still offers Close Window (Cmd+W). Destroying
   // the only window would leave the tray icon alive but inert, with every later
   // click throwing on the destroyed object and no way back except Force Quit.
+  // But this same handler also runs when app.quit() closes its windows as part
+  // of actually quitting (Quit button, or electron-updater's quitAndInstall) --
+  // unconditionally preventing that leaves the app running forever. index.js
+  // sets app.isQuitting on 'before-quit', which fires before window-closing
+  // begins, so we only intercept the Cmd+W / stray-close case here.
   panel.on('close', (event) => {
+    if (app.isQuitting) return;
     event.preventDefault();
     panel.hide();
   });
