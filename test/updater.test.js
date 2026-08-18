@@ -98,6 +98,11 @@ test('update-available: choosing Download calls downloadUpdate', async () => {
 
   assert.match(dialogModule.calls[0].message, /9\.9\.9/);
   assert.strictEqual(updater.downloadUpdateCalls, 1);
+
+  // The flag stays true through the download phase, so a check during download
+  // is still ignored (unlike Cancel/Later/error, which clear it immediately).
+  checker.checkForUpdates();
+  assert.strictEqual(updater.checkForUpdatesCalls, 1);
 });
 
 test('update-downloaded: choosing Later does not install, and clears the flag', async () => {
