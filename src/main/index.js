@@ -10,6 +10,7 @@ const { listPorts } = require('./scanner/index.js');
 const { probeAll } = require('./probe.js');
 const { classify } = require('./classify.js');
 const { createTracker, snapshotFingerprint } = require('./state.js');
+const { createUpdateChecker } = require('./updater.js');
 
 let panel = null;
 let store = null;
@@ -83,12 +84,15 @@ app.whenReady().then(() => {
     app.setLoginItemSettings({ openAtLogin: store.get('openAtLogin'), openAsHidden: true });
   }
 
+  const updateChecker = createUpdateChecker({ getWindow: () => panel });
+
   const handle = createTray({
     onVisibilityChange: (visible) => {
       panelVisible = visible;
       rescheduleTimer();
       if (visible) refreshNow();
-    }
+    },
+    onCheckForUpdates: () => updateChecker.checkForUpdates()
   });
   panel = handle.panel;
 
