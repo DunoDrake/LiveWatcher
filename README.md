@@ -3,6 +3,36 @@
 A menu bar (macOS) and system tray (Windows) tool that lists the local servers
 currently listening on this machine, and lets you open, copy, or stop each one.
 
+## Installation (macOS)
+
+1. Download `LiveWatcher-<version>-arm64.dmg` — from the
+   [GitHub Releases page](https://github.com/DunoDrake/LiveWatcher/releases)
+   once a version has been published there, or build it yourself locally
+   (`npm run dist`, output lands in `dist/`).
+2. Open the `.dmg` and drag **LiveWatcher** into **Applications**.
+3. Launch it from Applications (or Spotlight). The app has **no dock icon and
+   no window on open** by design — look for its icon in the menu bar (top
+   right) instead. Click it to open the panel; right-click for "Check for
+   Updates...".
+
+### "LiveWatcher can't be opened" on first launch
+
+The build isn't notarized with an Apple Developer ID (see Known limitations
+below), so Gatekeeper blocks it the first time. To open it anyway:
+
+- **macOS Sequoia (15) and later:** System Settings → Privacy & Security →
+  scroll to the bottom → "LiveWatcher was blocked..." → **Open Anyway** →
+  confirm in the dialog that appears. You'll need to do this once per new
+  build/version.
+- **Older macOS:** right-click (or Control-click) the app in Applications →
+  **Open** → **Open** again in the confirmation dialog.
+
+### Uninstalling
+
+Quit the app from its panel (or the tray menu), then drag
+`/Applications/LiveWatcher.app` to the Trash. Settings live separately at
+`~/Library/Application Support/LiveWatcher/` if you want to remove those too.
+
 ## Development
 
 ```bash
