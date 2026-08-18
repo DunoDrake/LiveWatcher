@@ -1,7 +1,7 @@
 'use strict';
 
 const path = require('node:path');
-const { Tray, BrowserWindow, nativeImage, screen } = require('electron');
+const { Tray, BrowserWindow, nativeImage, screen, Menu } = require('electron');
 
 const PANEL_WIDTH = 360;
 const PANEL_MAX_HEIGHT = 620;
@@ -57,7 +57,7 @@ function positionPanel(panel, trayBounds) {
   panel.setPosition(x, y, false);
 }
 
-function createTray({ onVisibilityChange }) {
+function createTray({ onVisibilityChange, onCheckForUpdates }) {
   const icon = nativeImage.createFromPath(TRAY_ICON_PATH);
   icon.setTemplateImage(true);
 
@@ -86,7 +86,12 @@ function createTray({ onVisibilityChange }) {
   };
 
   tray.on('click', toggle);
-  tray.on('right-click', toggle);
+  tray.on('right-click', () => {
+    const menu = Menu.buildFromTemplate([
+      { label: 'Check for Updates...', click: onCheckForUpdates }
+    ]);
+    tray.popUpContextMenu(menu);
+  });
   panel.on('show', () => onVisibilityChange(true));
   panel.on('hide', () => onVisibilityChange(false));
 
