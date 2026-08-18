@@ -84,7 +84,7 @@ app.whenReady().then(() => {
     app.setLoginItemSettings({ openAtLogin: store.get('openAtLogin'), openAsHidden: true });
   }
 
-  const updateChecker = createUpdateChecker({ getWindow: () => panel });
+  const updateChecker = createUpdateChecker();
 
   const handle = createTray({
     onVisibilityChange: (visible) => {

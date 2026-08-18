@@ -6,13 +6,20 @@
 function createUpdateChecker({
   updater = require('electron-updater').autoUpdater,
   dialogModule = require('electron').dialog,
-  getWindow,
   getCurrentVersion = () => require('electron').app.getVersion()
 } = {}) {
+  // electron-updater defaults both of these to true, which means it starts
+  // downloading in the background the instant 'update-available' fires --
+  // before our dialog's await even resolves -- and will silently install a
+  // cancelled update on next quit. We drive both explicitly from the dialogs
+  // below instead.
+  updater.autoDownload = false;
+  updater.autoInstallOnAppQuit = false;
+
   let checking = false;
 
   updater.on('update-not-available', () => {
-    dialogModule.showMessageBox(getWindow(), {
+    dialogModule.showMessageBox({
       type: 'info',
       buttons: ['OK'],
       message: `You're up to date (v${getCurrentVersion()}).`
@@ -21,7 +28,7 @@ function createUpdateChecker({
   });
 
   updater.on('update-available', async (info) => {
-    const result = await dialogModule.showMessageBox(getWindow(), {
+    const result = await dialogModule.showMessageBox({
       type: 'info',
       buttons: ['Cancel', 'Download'],
       defaultId: 1,
@@ -40,7 +47,7 @@ function createUpdateChecker({
   });
 
   updater.on('update-downloaded', async () => {
-    const result = await dialogModule.showMessageBox(getWindow(), {
+    const result = await dialogModule.showMessageBox({
       type: 'info',
       buttons: ['Later', 'Restart'],
       defaultId: 1,
@@ -54,8 +61,12 @@ function createUpdateChecker({
     }
   });
 
+  updater.on('update-cancelled', () => {
+    checking = false;
+  });
+
   updater.on('error', (error) => {
-    dialogModule.showMessageBox(getWindow(), {
+    dialogModule.showMessageBox({
       type: 'error',
       buttons: ['OK'],
       message: 'Update check failed.',
@@ -67,10 +78,26 @@ function createUpdateChecker({
   function checkForUpdates() {
     if (checking) return;
     checking = true;
-    // The real autoUpdater both emits 'error' and rejects the returned promise
-    // on failure. The 'error' listener already shows the dialog, so this catch
-    // just needs to swallow the rejection and avoid an unhandled-rejection warning.
-    Promise.resolve(updater.checkForUpdates()).catch(() => {});
+    // In an unpackaged dev build, electron-updater resolves to null with no
+    // event at all -- without this, checking would stay true forever and the
+    // menu item would go dead until restart. Wrapping the call itself in
+    // Promise.resolve().then() also means a synchronous throw from
+    // updater.checkForUpdates() flows through the same .catch() below.
+    Promise.resolve()
+      .then(() => updater.checkForUpdates())
+      .then((result) => {
+        if (!result) {
+          checking = false;
+          dialogModule.showMessageBox({
+            type: 'info',
+            buttons: ['OK'],
+            message: 'Updates can only be checked from a packaged build, not when running from source.'
+          });
+        }
+      })
+      .catch(() => {
+        checking = false;
+      });
   }
 
   return { checkForUpdates };

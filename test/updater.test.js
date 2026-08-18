@@ -11,7 +11,14 @@ function createFakeUpdater() {
   updater.checkForUpdatesCalls = 0;
   updater.downloadUpdateCalls = 0;
   updater.quitAndInstallCalls = 0;
-  updater.checkForUpdates = () => { updater.checkForUpdatesCalls += 1; };
+  // Resolves to a truthy result by default, mirroring a packaged build where
+  // electron-updater resolves with an UpdateCheckResult and the real update
+  // flow proceeds via the events emitted below. Tests simulating dev mode
+  // override this to resolve null instead.
+  updater.checkForUpdates = () => {
+    updater.checkForUpdatesCalls += 1;
+    return Promise.resolve({});
+  };
   updater.downloadUpdate = () => { updater.downloadUpdateCalls += 1; };
   updater.quitAndInstall = () => { updater.quitAndInstallCalls += 1; };
   return updater;
@@ -22,7 +29,7 @@ function createFakeDialog(responses) {
   const queue = [...responses];
   return {
     calls,
-    showMessageBox: async (_window, options) => {
+    showMessageBox: async (options) => {
       calls.push(options);
       return { response: queue.shift() };
     }
@@ -31,23 +38,25 @@ function createFakeDialog(responses) {
 
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
-test('checkForUpdates calls through to the real updater', () => {
+test('checkForUpdates calls through to the real updater', async () => {
   const updater = createFakeUpdater();
   const dialogModule = createFakeDialog([]);
-  const checker = createUpdateChecker({ updater, dialogModule, getWindow: () => null });
+  const checker = createUpdateChecker({ updater, dialogModule });
 
   checker.checkForUpdates();
+  await flush();
 
   assert.strictEqual(updater.checkForUpdatesCalls, 1);
 });
 
-test('a second call while one is in flight is ignored', () => {
+test('a second call while one is in flight is ignored', async () => {
   const updater = createFakeUpdater();
   const dialogModule = createFakeDialog([]);
-  const checker = createUpdateChecker({ updater, dialogModule, getWindow: () => null });
+  const checker = createUpdateChecker({ updater, dialogModule });
 
   checker.checkForUpdates();
   checker.checkForUpdates();
+  await flush();
 
   assert.strictEqual(updater.checkForUpdatesCalls, 1);
 });
@@ -58,7 +67,6 @@ test('update-not-available shows an up-to-date dialog and clears the in-flight f
   const checker = createUpdateChecker({
     updater,
     dialogModule,
-    getWindow: () => null,
     getCurrentVersion: () => '1.2.3'
   });
 
@@ -70,13 +78,14 @@ test('update-not-available shows an up-to-date dialog and clears the in-flight f
   assert.match(dialogModule.calls[0].message, /1\.2\.3/);
 
   checker.checkForUpdates();
+  await flush();
   assert.strictEqual(updater.checkForUpdatesCalls, 2);
 });
 
 test('update-available: choosing Cancel does not download, and clears the flag', async () => {
   const updater = createFakeUpdater();
   const dialogModule = createFakeDialog([0]);
-  const checker = createUpdateChecker({ updater, dialogModule, getWindow: () => null });
+  const checker = createUpdateChecker({ updater, dialogModule });
 
   checker.checkForUpdates();
   updater.emit('update-available', { version: '9.9.9' });
@@ -84,13 +93,14 @@ test('update-available: choosing Cancel does not download, and clears the flag',
 
   assert.strictEqual(updater.downloadUpdateCalls, 0);
   checker.checkForUpdates();
+  await flush();
   assert.strictEqual(updater.checkForUpdatesCalls, 2);
 });
 
 test('update-available: choosing Download calls downloadUpdate', async () => {
   const updater = createFakeUpdater();
   const dialogModule = createFakeDialog([1]);
-  const checker = createUpdateChecker({ updater, dialogModule, getWindow: () => null });
+  const checker = createUpdateChecker({ updater, dialogModule });
 
   checker.checkForUpdates();
   updater.emit('update-available', { version: '9.9.9' });
@@ -108,7 +118,7 @@ test('update-available: choosing Download calls downloadUpdate', async () => {
 test('update-downloaded: choosing Later does not install, and clears the flag', async () => {
   const updater = createFakeUpdater();
   const dialogModule = createFakeDialog([0]);
-  const checker = createUpdateChecker({ updater, dialogModule, getWindow: () => null });
+  const checker = createUpdateChecker({ updater, dialogModule });
 
   checker.checkForUpdates();
   updater.emit('update-downloaded');
@@ -116,13 +126,14 @@ test('update-downloaded: choosing Later does not install, and clears the flag', 
 
   assert.strictEqual(updater.quitAndInstallCalls, 0);
   checker.checkForUpdates();
+  await flush();
   assert.strictEqual(updater.checkForUpdatesCalls, 2);
 });
 
 test('update-downloaded: choosing Restart calls quitAndInstall', async () => {
   const updater = createFakeUpdater();
   const dialogModule = createFakeDialog([1]);
-  const checker = createUpdateChecker({ updater, dialogModule, getWindow: () => null });
+  const checker = createUpdateChecker({ updater, dialogModule });
 
   checker.checkForUpdates();
   updater.emit('update-downloaded');
@@ -134,7 +145,7 @@ test('update-downloaded: choosing Restart calls quitAndInstall', async () => {
 test('error shows a dialog with the error message and clears the flag', async () => {
   const updater = createFakeUpdater();
   const dialogModule = createFakeDialog([]);
-  const checker = createUpdateChecker({ updater, dialogModule, getWindow: () => null });
+  const checker = createUpdateChecker({ updater, dialogModule });
 
   checker.checkForUpdates();
   updater.emit('error', new Error('network down'));
@@ -142,5 +153,48 @@ test('error shows a dialog with the error message and clears the flag', async ()
 
   assert.match(dialogModule.calls[0].detail, /network down/);
   checker.checkForUpdates();
+  await flush();
+  assert.strictEqual(updater.checkForUpdatesCalls, 2);
+});
+
+test('createUpdateChecker disables autoDownload and autoInstallOnAppQuit', () => {
+  const updater = createFakeUpdater();
+  const dialogModule = createFakeDialog([]);
+
+  createUpdateChecker({ updater, dialogModule });
+
+  assert.strictEqual(updater.autoDownload, false);
+  assert.strictEqual(updater.autoInstallOnAppQuit, false);
+});
+
+test('a null result from checkForUpdates (unpackaged dev build) shows an info dialog and clears the flag', async () => {
+  const updater = createFakeUpdater();
+  updater.checkForUpdates = () => {
+    updater.checkForUpdatesCalls += 1;
+    return Promise.resolve(null);
+  };
+  const dialogModule = createFakeDialog([]);
+  const checker = createUpdateChecker({ updater, dialogModule });
+
+  checker.checkForUpdates();
+  await flush();
+
+  assert.match(dialogModule.calls[0].message, /packaged build/i);
+  checker.checkForUpdates();
+  await flush();
+  assert.strictEqual(updater.checkForUpdatesCalls, 2);
+});
+
+test('update-cancelled clears the flag', async () => {
+  const updater = createFakeUpdater();
+  const dialogModule = createFakeDialog([]);
+  const checker = createUpdateChecker({ updater, dialogModule });
+
+  checker.checkForUpdates();
+  updater.emit('update-cancelled');
+  await flush();
+
+  checker.checkForUpdates();
+  await flush();
   assert.strictEqual(updater.checkForUpdatesCalls, 2);
 });
