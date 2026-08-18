@@ -158,3 +158,8 @@ Electron atom, in both light and dark menu bars. Please confirm it looks
 right at actual menu bar size (16px), since qlmanage-based inspection of a
 smoothed 20x upscale is not a substitute for seeing it at 1x on a real
 display.
+
+6. Publish a real GitHub Release and confirm the full hot-update flow on an
+   older installed build: Check for Updates finds it, downloads it, and
+   Restart actually installs and relaunches the new version — specifically
+   to see whether Gatekeeper blocks the unsigned install.
