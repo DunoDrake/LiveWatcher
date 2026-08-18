@@ -16,19 +16,49 @@
   "build": {
     "appId": "com.hue.livewatcher",
     "productName": "LiveWatcher",
-    "files": ["src/**/*", "assets/**/*", "package.json"],
-    "directories": { "output": "dist" },
+    "publish": {
+      "provider": "github",
+      "owner": "DunoDrake",
+      "repo": "LiveWatcher"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist"
+    },
     "mac": {
-      "target": [{ "target": "dmg", "arch": ["arm64"] }],
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
       "category": "public.app-category.developer-tools",
-      "extendInfo": { "LSUIElement": 1 }
+      "extendInfo": {
+        "LSUIElement": 1
+      }
     },
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }]
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
     }
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
   }
 }

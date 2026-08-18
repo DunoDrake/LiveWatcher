@@ -10,6 +10,7 @@ const { listPorts } = require('./scanner/index.js');
 const { probeAll } = require('./probe.js');
 const { classify } = require('./classify.js');
 const { createTracker, snapshotFingerprint } = require('./state.js');
+const { createUpdateChecker } = require('./updater.js');
 
 let panel = null;
 let store = null;
@@ -83,12 +84,15 @@ app.whenReady().then(() => {
     app.setLoginItemSettings({ openAtLogin: store.get('openAtLogin'), openAsHidden: true });
   }
 
+  const updateChecker = createUpdateChecker();
+
   const handle = createTray({
     onVisibilityChange: (visible) => {
       panelVisible = visible;
       rescheduleTimer();
       if (visible) refreshNow();
-    }
+    },
+    onCheckForUpdates: () => updateChecker.checkForUpdates()
   });
   panel = handle.panel;
 
@@ -100,3 +104,12 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', (event) => event.preventDefault());
+
+// tray.js's panel keeps itself alive by preventing its own 'close' (so Cmd+W
+// just hides it) -- but that same handler would also block a real app.quit()
+// from ever completing, since Electron won't quit until its windows actually
+// close. before-quit fires first, so flagging it here lets that handler tell
+// the two cases apart.
+app.on('before-quit', () => {
+  app.isQuitting = true;
+});

@@ -46,6 +46,18 @@ Settings live in `~/Library/Application Support/LiveWatcher/settings.json`
 intervals, probe timeout. Restart the app after editing. Only "Launch at login"
 is editable from the interface.
 
+## Releasing an update
+
+1. Bump `"version"` in `package.json`.
+2. Run `GH_TOKEN=<token> npm run dist -- --publish always`, where `<token>`
+   is a GitHub personal access token with `repo` scope. `GH_TOKEN` is never
+   committed — set it only for this one command.
+3. electron-builder uploads the installer plus `latest-mac.yml` to a new
+   GitHub Release on `DunoDrake/LiveWatcher`.
+4. Installed copies pick it up when the user chooses "Check for
+   Updates..." from the tray's right-click menu — there is no automatic
+   background check.
+
 ## Known limitations
 
 - The Windows scanner is unit-tested against recorded fixtures but has never
@@ -56,6 +68,9 @@ is editable from the interface.
 - `npm run dist` signs the build with whatever Apple certificate it finds in
   your keychain. To produce a genuinely unsigned build, run
   `CSC_IDENTITY_AUTO_DISCOVERY=false npm run dist`.
+- Hot-update installs are unverified against a real signed build. This
+  machine only has an Apple Development certificate, not a Developer ID, so
+  Gatekeeper may block `quitAndInstall()` from replacing the installed app.
 
 ## Design and implementation notes
 
