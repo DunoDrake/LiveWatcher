@@ -6,7 +6,7 @@ const { app } = require('electron');
 const { createTray } = require('./tray.js');
 const { registerIpc } = require('./ipc.js');
 const { createStore } = require('./store.js');
-const { listPorts } = require('./scanner/index.js');
+const { listPorts, getCommandLines } = require('./scanner/index.js');
 const { probeAll } = require('./probe.js');
 const { classify } = require('./classify.js');
 const { createTracker, snapshotFingerprint } = require('./state.js');
@@ -24,11 +24,24 @@ const tracker = createTracker();
 
 async function collect() {
   const raw = await listPorts();
+
+  let commandLines = new Map();
+  try {
+    commandLines = await getCommandLines(raw.map((row) => row.pid));
+  } catch {
+    // Command-line lookup is best-effort tooltip context; losing it must not
+    // blank the whole scan.
+  }
+
   const probes = await probeAll(raw.map((row) => row.port), {
     timeoutMs: store.get('probeTimeoutMs')
   });
 
-  const enriched = raw.map((row) => ({ ...row, ...probes.get(row.port) }));
+  const enriched = raw.map((row) => ({
+    ...row,
+    commandLine: commandLines.get(row.pid) ?? null,
+    ...probes.get(row.port)
+  }));
   const tracked = tracker.update(enriched);
 
   return classify(tracked, { devRanges: store.get('devRanges') });
@@ -63,7 +76,12 @@ async function refreshNow() {
   lastPayload = payload;
 
   if (panel && !panel.isDestroyed()) {
-    panel.webContents.send('snapshot', { ...payload, settings: store.all(), now: Date.now() });
+    panel.webContents.send('snapshot', {
+      ...payload,
+      settings: store.all(),
+      version: app.getVersion(),
+      now: Date.now()
+    });
   }
 }
 

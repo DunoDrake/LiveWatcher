@@ -1,0 +1,3 @@
+ 6161 /Users/hue/.agentmemory/bin/iii --config /Users/hue/.nvm/versions/node/v24.13.1/lib/node_modules/@agentmemory/agentmemory/dist/iii-config.yaml
+  591 node server.js
+  521 /System/Library/CoreServices/ControlCenter.app/Contents/MacOS/ControlCenter

@@ -77,4 +77,43 @@ function mergeWin32(netstatRows, pidMap) {
   return rows;
 }
 
-module.exports = { parseNetstat, parseTasklist, mergeWin32, splitHostPort };
+// `wmic ... get CommandLine,ProcessId /VALUE` prints one KEY=VALUE line per
+// field, blocks separated by blank lines. That format sidesteps the ambiguity
+// CSV would have with commas inside a real command line (paths, args).
+function parseWmicCommandLines(stdout) {
+  const map = new Map();
+  const blocks = String(stdout).replace(/\r\n/g, '\n').split(/\n\s*\n/);
+
+  for (const block of blocks) {
+    let pid = null;
+    let commandLine = null;
+
+    for (const line of block.split('\n')) {
+      const idx = line.indexOf('=');
+      if (idx === -1) continue;
+
+      const key = line.slice(0, idx).trim();
+      const value = line.slice(idx + 1).trim();
+
+      if (key === 'ProcessId') pid = Number(value);
+      else if (key === 'CommandLine') commandLine = value;
+    }
+
+    if (Number.isInteger(pid) && commandLine) map.set(pid, commandLine);
+  }
+
+  return map;
+}
+
+function buildPidFilter(pids) {
+  return pids.map((pid) => `ProcessId=${pid}`).join(' or ');
+}
+
+module.exports = {
+  parseNetstat,
+  parseTasklist,
+  mergeWin32,
+  splitHostPort,
+  parseWmicCommandLines,
+  buildPidFilter
+};

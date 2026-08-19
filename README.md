@@ -33,12 +33,41 @@ Quit the app from its panel (or the tray menu), then drag
 `/Applications/LiveWatcher.app` to the Trash. Settings live separately at
 `~/Library/Application Support/LiveWatcher/` if you want to remove those too.
 
+## Installation (Windows)
+
+1. Download `LiveWatcher Setup <version>.exe` — from the
+   [GitHub Releases page](https://github.com/DunoDrake/LiveWatcher/releases)
+   once a version has been published there, or build it yourself locally
+   (`npm run dist`, output lands in `dist/`).
+2. Run the installer. It is not one-click: it asks you to confirm (and
+   optionally change) the install directory, then walks through the usual
+   next/next/finish steps.
+3. Launch **LiveWatcher** from the Start menu (or the desktop shortcut, if
+   you left that box checked during install). The app has **no window on
+   open** by design — look for its icon in the system tray (bottom right,
+   near the clock; click the `^` arrow to see hidden icons if it's not
+   visible right away). Click it to open the panel.
+
+### "Windows protected your PC" on first launch
+
+The build isn't signed with a Windows code-signing certificate (see Known
+limitations below), so SmartScreen blocks it the first time. To run it
+anyway: on the SmartScreen dialog, click **More info**, then **Run anyway**.
+You'll need to do this once per new build/version.
+
+### Uninstalling
+
+Quit the app from its panel (or the tray menu), then use **Settings → Apps →
+Installed apps** (or **Control Panel → Programs and Features** on older
+Windows) and uninstall **LiveWatcher**. Settings live separately at
+`%APPDATA%\LiveWatcher\settings.json` if you want to remove those too.
+
 ## Development
 
 ```bash
 npm install
 npm start     # run from source
-npm test      # unit tests (node --test), 52 tests
+npm test      # unit tests (node --test), 87 tests
 npm run dist  # build the installer into dist/
 ```
 
@@ -48,6 +77,13 @@ npm run dist  # build the installer into dist/
 `tasklist` on Windows. Field mode is used on macOS rather than column parsing
 because real process names contain spaces and parentheses — `Discord Helper
 (Renderer)`, `Cursor Helper (Plugin)` — which break any whitespace splitter.
+
+Each unique pid found this way is then looked up once more (`ps -o
+pid=,command=` on macOS, `wmic process get CommandLine,ProcessId` on Windows)
+to get its full command line, shown as a hover tooltip on the row. This is
+the only way to tell apart two ports served by the same process — e.g. one
+binary running separate HTTP and stream workers on different ports still
+shows the same short process name and pid for both rows.
 
 Each listening port is then probed over HTTP to read its status code, page
 title, and framework header, so the panel can show `localhost:3000 —
@@ -98,6 +134,9 @@ is editable from the interface.
 - `npm run dist` signs the build with whatever Apple certificate it finds in
   your keychain. To produce a genuinely unsigned build, run
   `CSC_IDENTITY_AUTO_DISCOVERY=false npm run dist`.
+- The Windows build is not code-signed (no certificate configured), so
+  SmartScreen flags it on first launch — see the Windows install section
+  above.
 - Hot-update installs are unverified against a real signed build. This
   machine only has an Apple Development certificate, not a Developer ID, so
   Gatekeeper may block `quitAndInstall()` from replacing the installed app.

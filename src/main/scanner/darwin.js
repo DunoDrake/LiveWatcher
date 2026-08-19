@@ -55,4 +55,28 @@ function parseLsof(stdout) {
   return rows;
 }
 
-module.exports = { parseLsof, parseAddress };
+// `ps -o pid=,command=` prints one line per pid: right-padded pid, one space,
+// then the full command including args. Unlike lsof's 'c' field (truncated
+// comm name), this carries the whole invocation so two ports served by the
+// same binary can still be told apart by their arguments.
+function parseCommandLines(stdout) {
+  const map = new Map();
+
+  for (const line of String(stdout).split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    const spaceIdx = trimmed.indexOf(' ');
+    if (spaceIdx === -1) continue;
+
+    const pid = Number(trimmed.slice(0, spaceIdx));
+    if (!Number.isInteger(pid)) continue;
+
+    const command = trimmed.slice(spaceIdx + 1).trim();
+    if (command) map.set(pid, command);
+  }
+
+  return map;
+}
+
+module.exports = { parseLsof, parseAddress, parseCommandLines };

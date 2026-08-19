@@ -1,6 +1,7 @@
 'use strict';
 
 const dom = {
+  version: document.getElementById('version'),
   count: document.getElementById('count'),
   banner: document.getElementById('banner'),
   devList: document.getElementById('dev-list'),
@@ -119,6 +120,11 @@ function buildRow(entry, now) {
   row.append(dot, middle, right);
   row.addEventListener('dblclick', () => window.liveWatcher.openPort(entry.port));
 
+  // Same pid can serve several ports (e.g. one process running separate HTTP
+  // and stream workers), so the process name alone can't tell them apart.
+  // The full command line, shown on hover, usually can.
+  if (entry.commandLine) row.title = entry.commandLine;
+
   return row;
 }
 
@@ -127,10 +133,11 @@ function showBanner(message) {
   dom.banner.hidden = false;
 }
 
-function render({ dev, other, error, settings, now }) {
+function render({ dev, other, error, settings, version, now }) {
   dom.banner.hidden = !error;
   if (error) dom.banner.textContent = error;
 
+  if (version) dom.version.textContent = `v${version}`;
   dom.count.textContent = `${dev.length} live`;
   dom.empty.hidden = dev.length > 0;
 

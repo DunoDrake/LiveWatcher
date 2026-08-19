@@ -49,7 +49,13 @@ body {
 }
 
 .bar h1 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: -0.1px; }
-.count { margin-left: auto; color: var(--muted); font-size: 11px; }
+.version {
+  margin-left: auto;
+  font-family: ui-monospace, "SF Mono", "JetBrains Mono", monospace;
+  font-size: 10px;
+  color: var(--subtle);
+}
+.count { color: var(--muted); font-size: 11px; }
 
 .icon-button, .text-button {
   background: none;

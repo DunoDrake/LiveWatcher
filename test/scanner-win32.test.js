@@ -5,11 +5,18 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { parseNetstat, parseTasklist, mergeWin32 } = require('../src/main/scanner/win32.js');
+const {
+  parseNetstat,
+  parseTasklist,
+  mergeWin32,
+  parseWmicCommandLines,
+  buildPidFilter
+} = require('../src/main/scanner/win32.js');
 
 const read = (name) => fs.readFileSync(path.join(__dirname, 'fixtures', name), 'utf8');
 const NETSTAT = read('netstat-win32.txt');
 const TASKLIST = read('tasklist-win32.csv');
+const WMIC = read('wmic-win32.txt');
 
 test('parseNetstat keeps only listening TCP rows', () => {
   const rows = parseNetstat(NETSTAT);
@@ -46,4 +53,23 @@ test('mergeWin32 falls back to "unknown" when tasklist has no entry', () => {
 
 test('parseNetstat returns an empty array for empty input', () => {
   assert.deepStrictEqual(parseNetstat(''), []);
+});
+
+test('parseWmicCommandLines maps pid to full command line', () => {
+  const map = parseWmicCommandLines(WMIC);
+  assert.strictEqual(map.get(8823), 'C:\\Program Files\\nodejs\\node.exe server.js');
+  assert.strictEqual(map.get(4120), 'C:\\Program Files\\PostgreSQL\\16\\bin\\postgres.exe -D data');
+});
+
+test('parseWmicCommandLines skips a block with an empty CommandLine', () => {
+  const map = parseWmicCommandLines(WMIC);
+  assert.strictEqual(map.has(1044), false);
+});
+
+test('parseWmicCommandLines returns an empty map for empty input', () => {
+  assert.strictEqual(parseWmicCommandLines('').size, 0);
+});
+
+test('buildPidFilter joins pids into a wmic where clause', () => {
+  assert.strictEqual(buildPidFilter([8823, 4120]), 'ProcessId=8823 or ProcessId=4120');
 });

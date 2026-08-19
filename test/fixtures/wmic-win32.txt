@@ -1,0 +1,13 @@
+
+CommandLine=C:\Program Files\nodejs\node.exe server.js
+ProcessId=8823
+
+
+CommandLine=C:\Program Files\PostgreSQL\16\bin\postgres.exe -D data
+ProcessId=4120
+
+
+CommandLine=
+ProcessId=1044
+
+
