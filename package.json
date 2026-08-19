@@ -1,6 +1,6 @@
 {
   "name": "livewatcher",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Menu bar tool that lists live local servers",
   "main": "src/main/index.js",
   "private": true,
