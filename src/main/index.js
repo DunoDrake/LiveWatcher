@@ -1,7 +1,7 @@
 'use strict';
 
 const path = require('node:path');
-const { app } = require('electron');
+const { app, Notification } = require('electron');
 
 const { createTray } = require('./tray.js');
 const { registerIpc } = require('./ipc.js');
@@ -97,6 +97,20 @@ if (process.platform === 'darwin' && app.dock) app.dock.hide();
 
 app.whenReady().then(() => {
   store = createStore({ filePath: path.join(app.getPath('userData'), 'settings.json') });
+
+  // quitAndInstall() replaces the whole process, so there is no callback in
+  // the old process to confirm success -- comparing the version on this
+  // launch against the one recorded on the last launch is the only reliable
+  // signal that an update actually landed.
+  const currentVersion = app.getVersion();
+  const previousVersion = store.get('lastKnownVersion');
+  if (previousVersion && previousVersion !== currentVersion && Notification.isSupported()) {
+    new Notification({
+      title: 'LiveWatcher updated',
+      body: `Now running v${currentVersion}.`
+    }).show();
+  }
+  store.set('lastKnownVersion', currentVersion);
 
   if (app.isPackaged) {
     app.setLoginItemSettings({ openAtLogin: store.get('openAtLogin'), openAsHidden: true });

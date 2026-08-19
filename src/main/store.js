@@ -10,7 +10,11 @@ const DEFAULT_SETTINGS = {
   pollIntervalOpenMs: 5000,
   pollIntervalClosedMs: 15000,
   probeTimeoutMs: 1500,
-  showOtherPorts: false
+  showOtherPorts: false,
+  // Not user-editable from the interface: tracks the version seen on the
+  // previous launch so a post-update restart can tell "just updated" apart
+  // from "started normally" and notify only the former.
+  lastKnownVersion: null
 };
 
 const MIN_POLL_MS = 1000;
@@ -37,7 +41,8 @@ const VALIDATORS = {
   pollIntervalOpenMs: (value) => isPositiveInt(value, MIN_POLL_MS),
   pollIntervalClosedMs: (value) => isPositiveInt(value, MIN_POLL_MS),
   probeTimeoutMs: (value) => isPositiveInt(value, 100),
-  showOtherPorts: (value) => typeof value === 'boolean'
+  showOtherPorts: (value) => typeof value === 'boolean',
+  lastKnownVersion: (value) => value === null || typeof value === 'string'
 };
 
 function createStore({ filePath }) {
