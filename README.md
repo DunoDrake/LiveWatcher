@@ -137,6 +137,10 @@ is editable from the interface.
 - The Windows build is not code-signed (no certificate configured), so
   SmartScreen flags it on first launch — see the Windows install section
   above.
+- The `mac` target must build both `dmg` and `zip` — Squirrel.Mac (what
+  electron-updater uses on macOS) downloads the `.zip`, not the `.dmg`.
+  Publishing only the `.dmg` makes "Check for Updates..." find the release
+  but then fail with "ZIP file not provided" once the user clicks Download.
 - Hot-update installs are unverified against a real signed build. This
   machine only has an Apple Development certificate, not a Developer ID, so
   Gatekeeper may block `quitAndInstall()` from replacing the installed app.
